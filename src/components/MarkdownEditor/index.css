@@ -1,0 +1,74 @@
+.markdown-editor {
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+}
+
+.markdown-editor .ant-tabs-nav {
+  margin: 0;
+  padding: 0 8px;
+  background: #fafafa;
+  border-bottom: 1px solid #d9d9d9;
+  border-radius: 6px 6px 0 0;
+}
+
+.markdown-editor .ant-tabs-content-holder {
+  padding: 16px;
+}
+
+.markdown-editor .ant-input {
+  border: none;
+  resize: none;
+  background: transparent;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}
+
+.markdown-editor .ant-input:focus {
+  box-shadow: none;
+}
+
+.markdown-preview {
+  min-height: 200px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 8px;
+  background: #fff;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-preview code {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 85%;
+  background-color: rgba(27, 31, 35, 0.05);
+  border-radius: 6px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}
+
+.markdown-preview pre {
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background-color: #f6f8fa;
+  border-radius: 6px;
+}
+
+.markdown-preview pre code {
+  padding: 0;
+  margin: 0;
+  background-color: transparent;
+  border: 0;
+} 

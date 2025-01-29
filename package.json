@@ -1,0 +1,46 @@
+{
+  "name": "testing-ai-extension",
+  "displayName": "Testing AI Extension",
+  "version": "1.0.0",
+  "description": "AI assistant Chrome extension for Testing",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "test": "jest",
+    "lint": "eslint src --ext ts,tsx"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.6.0",
+    "@reduxjs/toolkit": "^2.0.1",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "antd": "^5.12.5",
+    "axios": "^1.6.2",
+    "highlight.js": "^11.9.0",
+    "marked": "^11.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^9.0.3",
+    "react-redux": "^9.0.4",
+    "react-syntax-highlighter": "^15.6.1"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^14.1.2",
+    "@types/chrome": "^0.0.254",
+    "@types/fs-extra": "^11.0.4",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.7",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "fs-extra": "^11.3.0",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "path": "^0.12.7",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10"
+  }
+}
