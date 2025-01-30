@@ -16,19 +16,6 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 const MessageContent: React.FC<{ content: string }> = ({ content }) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopied(true);
-      antMessage.success('已复制到剪贴板');
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      antMessage.error('复制失败');
-    }
-  };
-
   const components: Partial<Components> = {
     p: ({ children }) => (
       <p style={{ 
@@ -121,22 +108,6 @@ const MessageContent: React.FC<{ content: string }> = ({ content }) => {
 
   return (
     <div className="message-content">
-      <div 
-        className="copy-button"
-        onClick={handleCopy}
-        style={{
-          position: 'absolute',
-          top: '4px',
-          right: '4px',
-          cursor: 'pointer',
-          padding: '4px',
-          borderRadius: '4px',
-          backgroundColor: 'rgba(255, 255, 255, 0.8)',
-          display: 'none'
-        }}
-      >
-        {copied ? <CheckOutlined style={{ color: '#52c41a' }} /> : <CopyOutlined />}
-      </div>
       <ReactMarkdown components={components}>
         {content}
       </ReactMarkdown>
@@ -436,7 +407,9 @@ ${pageContext.mainContent}
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      if (selectedPromptId || inputValue.trim()) {
+        handleSend();
+      }
     }
   };
 
@@ -539,7 +512,7 @@ ${pageContext.mainContent}
             type="primary"
             icon={<SendOutlined />}
             onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading}
+            disabled={!selectedPromptId && !inputValue.trim() || isLoading}
             loading={isLoading}
             size="middle"
           />

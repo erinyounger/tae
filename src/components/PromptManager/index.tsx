@@ -239,8 +239,10 @@ export const PromptManager: React.FC = () => {
         }}
         footer={null}
         width={800}
+        destroyOnClose={true}
       >
         <PromptForm
+          key={editingPrompt?.id || 'new'}
           initialValues={editingPrompt}
           onSubmit={async (values) => {
             try {

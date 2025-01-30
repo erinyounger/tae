@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { loadSessions } from '../../store/slices/chatSlice';
+import { loadPrompts } from '../../store/slices/promptSlice';
 import { SessionService } from '../../services/sessionService';
 import { StorageService } from '../../services/storageService';
+import { PromptService } from '../../services/promptService';
 import { loadModels } from '../../store/slices/modelSlice';
 import { message } from 'antd';
 
@@ -28,6 +30,15 @@ export const AppInitializer: React.FC = () => {
           dispatch(loadModels(savedModels));
         } else {
           console.log('No saved models found');
+        }
+
+        // 加载保存的提示词
+        const savedPrompts = await PromptService.loadPrompts();
+        if (savedPrompts && savedPrompts.length > 0) {
+          console.log('Loading saved prompts:', savedPrompts);
+          dispatch(loadPrompts(savedPrompts));
+        } else {
+          console.log('No saved prompts found');
         }
       } catch (error) {
         console.error('Failed to initialize app:', error);

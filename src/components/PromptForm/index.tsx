@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Input, Select, Button, Space, Tag, Tooltip } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { Prompt, PromptCategory, PromptVariable } from '../../types';
@@ -32,6 +32,20 @@ export const PromptForm: React.FC<PromptFormProps> = ({
   const [variables, setVariables] = useState<PromptVariable[]>(
     initialValues?.variables || []
   );
+
+  useEffect(() => {
+    if (initialValues) {
+      form.setFieldsValue({
+        title: initialValues.title,
+        content: initialValues.content,
+        category: initialValues.category
+      });
+    } else {
+      form.resetFields();
+      setTags([]);
+      setVariables([]);
+    }
+  }, [form, initialValues]);
 
   const handleSubmit = async () => {
     try {
@@ -76,6 +90,7 @@ export const PromptForm: React.FC<PromptFormProps> = ({
       form={form}
       layout="vertical"
       onFinish={handleSubmit}
+      initialValues={initialValues}
       onValuesChange={(changedValues, allValues) => {
         console.log('Form values changed:', changedValues, allValues);
       }}
