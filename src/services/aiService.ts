@@ -82,74 +82,78 @@ export class AIService {
         }
       };
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-          flushBuffer();
-          break;
-        }
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            flushBuffer();
+            break;
+          }
 
-        const chunk = decoder.decode(value);
-        buffer += chunk;
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+          const chunk = decoder.decode(value);
+          buffer += chunk;
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
 
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices[0]?.delta?.content;
-              
-              if (content) {
-                // 处理第一个块
-                if (isFirstChunk) {
-                  contentBuffer = content.trimStart();
-                  isFirstChunk = false;
-                  continue;
-                }
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices[0]?.delta?.content;
+                
+                if (content) {
+                  // 处理第一个块
+                  if (isFirstChunk) {
+                    contentBuffer = content.trimStart();
+                    isFirstChunk = false;
+                    continue;
+                  }
 
-                // 处理段落间距
-                if (content.includes('\n')) {
-                  const lines = content.split('\n');
-                  for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-                    const isEmptyLine = !line.trim();
+                  // 处理段落间距
+                  if (content.includes('\n')) {
+                    const lines = content.split('\n');
+                    for (let i = 0; i < lines.length; i++) {
+                      const line = lines[i];
+                      const isEmptyLine = !line.trim();
 
-                    if (isEmptyLine) {
-                      if (!lastLineWasEmpty) {
-                        contentBuffer += '\n';
-                        lastLineWasEmpty = true;
-                      }
-                    } else {
-                      if (lastLineWasEmpty) {
-                        contentBuffer += line;
-                        lastLineWasEmpty = false;
+                      if (isEmptyLine) {
+                        if (!lastLineWasEmpty) {
+                          contentBuffer += '\n';
+                          lastLineWasEmpty = true;
+                        }
                       } else {
-                        contentBuffer += (i > 0 ? '\n' : '') + line;
+                        if (lastLineWasEmpty) {
+                          contentBuffer += line;
+                          lastLineWasEmpty = false;
+                        } else {
+                          contentBuffer += (i > 0 ? '\n' : '') + line;
+                        }
                       }
                     }
+                  } else {
+                    contentBuffer += content;
                   }
-                } else {
-                  contentBuffer += content;
-                }
 
-                // 检查是否需要刷新缓冲区
-                if (
-                  content.includes('：') ||   // 遇到中文冒号
-                  content.includes(':') ||    // 遇到英文冒号
-                  content.match(/^\d+\.|^[-*]|^#/) // 遇到列表项或标题
-                ) {
-                  flushBuffer();
+                  // 检查是否需要刷新缓冲区
+                  if (
+                    content.includes('：') ||   // 遇到中文冒号
+                    content.includes(':') ||    // 遇到英文冒号
+                    content.match(/^\d+\.|^[-*]|^#/) // 遇到列表项或标题
+                  ) {
+                    flushBuffer();
+                  }
                 }
+              } catch (e) {
+                console.error('Failed to parse SSE message:', e);
               }
-            } catch (e) {
-              console.error('Failed to parse SSE message:', e);
             }
           }
         }
+      } finally {
+        reader.releaseLock();
       }
     } catch (error: any) {
       console.error('Request Error:', {
@@ -158,7 +162,7 @@ export class AIService {
         error: error.message
       });
       if (error.name === 'AbortError') {
-        throw new Error('请求已取消');
+        throw error;
       }
       if (error.response?.status === 400) {
         throw new Error('请求参数错误，请检查模型配置');
@@ -182,7 +186,7 @@ export class AIService {
       await this.makeStreamRequest(messages, onUpdate, signal);
     } catch (error: any) {
       console.error('Error in sendMessage:', error);
-      throw new Error(error.message || 'Failed to send message');
+      throw error;
     }
   }
 

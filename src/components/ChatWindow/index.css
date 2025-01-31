@@ -116,4 +116,14 @@ div:hover > .copy-button {
 
 .copy-button:active {
   transform: scale(0.95);
+}
+
+/* 停止图标样式 */
+.loading-icon {
+  font-size: 16px;
+  transition: all 0.3s;
+}
+
+.loading-icon:hover {
+  transform: scale(1.2);
 } 

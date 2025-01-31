@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Layout, Input, Button, List, Avatar, message as antMessage, Select, Tooltip } from 'antd';
-import { SendOutlined, UserOutlined, RobotOutlined, StarFilled, CopyOutlined, CheckOutlined } from '@ant-design/icons';
+import { SendOutlined, UserOutlined, RobotOutlined, StarFilled, CopyOutlined, CheckOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { addMessage, updateMessage, appendMessageContent } from '../../store/slices/chatSlice';
@@ -117,6 +117,9 @@ const MessageContent: React.FC<{ content: string }> = ({ content }) => {
 
 const MessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
   const [copied, setCopied] = useState(false);
+  const activeModelId = useSelector((state: RootState) => state.models.activeModelId);
+  const models = useSelector((state: RootState) => state.models.models);
+  const activeModel = models.find((m: ModelConfig) => m.id === activeModelId);
 
   const handleCopy = async () => {
     try {
@@ -144,26 +147,37 @@ const MessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
       }}
     >
       {message.role === 'assistant' && (
-        <Tooltip title="复制内容">
-          <div 
-            className="copy-button"
-            onClick={handleCopy}
-            style={{
-              position: 'absolute',
-              top: '8px',
-              right: '8px',
-              cursor: 'pointer',
-              padding: '4px',
-              borderRadius: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              display: 'none',
-              zIndex: 1,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}
-          >
-            {copied ? <CheckOutlined style={{ color: '#52c41a' }} /> : <CopyOutlined />}
+        <>
+          <div style={{ 
+            fontSize: '12px',
+            color: '#666',
+            marginBottom: '4px',
+            borderBottom: '1px solid #e8e8e8',
+            paddingBottom: '4px'
+          }}>
+            Assistant: {activeModel?.model || '未知模型'}
           </div>
-        </Tooltip>
+          <Tooltip title="复制内容">
+            <div 
+              className="copy-button"
+              onClick={handleCopy}
+              style={{
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                display: 'none',
+                zIndex: 1,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}
+            >
+              {copied ? <CheckOutlined style={{ color: '#52c41a' }} /> : <CopyOutlined />}
+            </div>
+          </Tooltip>
+        </>
       )}
       <MessageContent content={message.content} />
       {message.status === 'streaming' && (
@@ -178,6 +192,7 @@ export const ChatWindow: React.FC = () => {
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const dispatch = useDispatch();
   
   const prompts = useSelector((state: RootState) => state.prompts.prompts);
@@ -299,10 +314,28 @@ export const ChatWindow: React.FC = () => {
     setSelectedPromptId(promptId);
   };
 
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   const handleSend = async () => {
     if (!inputValue.trim() && !selectedPromptId) return;
     if (!aiServiceRef.current) return;
     
+    abortControllerRef.current = new AbortController();
     setIsLoading(true);
     const messageId = crypto.randomUUID();
     
@@ -310,11 +343,37 @@ export const ChatWindow: React.FC = () => {
       const pageContext = await getPageContext();
       const currentMessages = [...messages];
       
+      // 如果选择了提示词，添加提示词系统消息
+      let selectedPrompt;
+      if (selectedPromptId) {
+        selectedPrompt = prompts.find(p => p.id === selectedPromptId);
+        if (selectedPrompt) {
+          let promptContent = selectedPrompt.content;
+          
+          // 如果提示词有变量，使用用户输入替换变量
+          if (selectedPrompt.variables && selectedPrompt.variables.length > 0) {
+            selectedPrompt.variables.forEach(variable => {
+              const placeholder = `{${variable.name}}`;
+              promptContent = promptContent.replace(placeholder, inputValue.trim() || variable.defaultValue || '');
+            });
+          }
+          
+          const promptMessage: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'system',
+            content: promptContent,
+            timestamp: Date.now(),
+            status: 'success'
+          };
+          currentMessages.push(promptMessage);
+        }
+      }
+
       // 添加用户消息
       const userMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'user',
-        content: inputValue.trim(),
+        content: inputValue.trim() || (selectedPrompt ? `执行提示词：${selectedPrompt.title}` : ''),
         timestamp: Date.now(),
         status: 'success'
       };
@@ -323,6 +382,9 @@ export const ChatWindow: React.FC = () => {
         sessionId: activeSessionId!, 
         message: userMessage 
       }));
+
+      // 将用户消息添加到当前消息列表
+      currentMessages.push(userMessage);
 
       // 如果有页面上下文，添加系统消息
       if (pageContext) {
@@ -347,8 +409,6 @@ ${pageContext.mainContent}
         currentMessages.push(contextMessage);
       }
       
-      currentMessages.push(userMessage);
-
       // 创建助手消息
       const assistantMessage: ChatMessage = {
         id: messageId,
@@ -372,7 +432,8 @@ ${pageContext.mainContent}
             messageId: messageId,
             content
           }));
-        }
+        },
+        abortControllerRef.current.signal
       );
 
       // 更新消息状态为完成
@@ -389,18 +450,29 @@ ${pageContext.mainContent}
 
       setInputValue('');
       setSelectedPromptId(null);
-    } catch (error) {
-      antMessage.error('发送消息失败');
-      console.error('Error sending message:', error);
-      
-      // 更新消息状态为错误
-      dispatch(updateMessage({
-        sessionId: activeSessionId!,
-        messageId: messageId,
-        updates: { status: 'error' }
-      }));
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        dispatch(updateMessage({
+          sessionId: activeSessionId!,
+          messageId: messageId,
+          updates: { 
+            status: 'success',
+            content: messages.find(m => m.id === messageId)?.content + '\n\n[已终止输出]'
+          }
+        }));
+        antMessage.info('已终止输出');
+      } else {
+        antMessage.error('发送消息失败');
+        console.error('Error sending message:', error);
+        dispatch(updateMessage({
+          sessionId: activeSessionId!,
+          messageId: messageId,
+          updates: { status: 'error' }
+        }));
+      }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -510,10 +582,10 @@ ${pageContext.mainContent}
           />
           <Button
             type="primary"
-            icon={<SendOutlined />}
-            onClick={handleSend}
-            disabled={!selectedPromptId && !inputValue.trim() || isLoading}
-            loading={isLoading}
+            icon={isLoading ? <LoadingOutlined className="loading-icon" spin /> : <SendOutlined />}
+            onClick={isLoading ? handleStop : handleSend}
+            disabled={(!selectedPromptId && !inputValue.trim()) || (isLoading && !abortControllerRef.current)}
+            loading={false}
             size="middle"
           />
         </div>
