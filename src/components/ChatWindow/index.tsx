@@ -191,6 +191,7 @@ export const ChatWindow: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const dispatch = useDispatch();
@@ -330,6 +331,17 @@ export const ChatWindow: React.FC = () => {
       }
     };
   }, []);
+
+  const handleCopy = async (messageId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedMessageId(messageId);
+      antMessage.success('已复制到剪贴板');
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch (err) {
+      antMessage.error('复制失败');
+    }
+  };
 
   const handleSend = async () => {
     if (!inputValue.trim() && !selectedPromptId) return;
@@ -495,13 +507,8 @@ ${pageContext.mainContent}
   };
 
   return (
-    <Layout style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ 
-        flex: 1, 
-        overflowY: 'auto', 
-        padding: '12px',
-        paddingBottom: '20px'
-      }}>
+    <Layout className="chat-container">
+      <div className="messages-list">
         <List
           dataSource={messages}
           renderItem={(message: ChatMessage) => (
@@ -518,31 +525,54 @@ ${pageContext.mainContent}
                   display: 'flex',
                   alignItems: 'flex-start',
                   maxWidth: '85%',
-                  flexDirection: message.role === 'user' ? 'row-reverse' : 'row'
+                  flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
+                  gap: '8px'
                 }}
               >
                 <Avatar
                   icon={message.role === 'user' ? <UserOutlined /> : <RobotOutlined />}
                   style={{ 
-                    marginRight: message.role === 'user' ? '0' : '8px',
-                    marginLeft: message.role === 'user' ? '8px' : '0',
-                    backgroundColor: message.role === 'user' ? '#1677ff' : '#52c41a'
+                    backgroundColor: message.role === 'user' ? '#1677ff' : '#52c41a',
+                    flexShrink: 0
                   }}
                   size="small"
                 />
-                <MessageBubble message={message} />
+                <div className={`message-bubble ${message.role}`}>
+                  {message.role === 'assistant' && (
+                    <div className="model-indicator">
+                      Assistant: {activeModel?.model || '未知模型'}
+                    </div>
+                  )}
+                  <MessageContent content={message.content} />
+                  {message.status === 'streaming' && (
+                    <span className="typing-indicator">▋</span>
+                  )}
+                  {message.role === 'assistant' && (
+                    <Tooltip title="复制内容">
+                      <div 
+                        className="copy-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopy(message.id, message.content);
+                        }}
+                      >
+                        {copiedMessageId === message.id ? 
+                          <CheckOutlined style={{ color: '#52c41a' }} /> : 
+                          <CopyOutlined />
+                        }
+                      </div>
+                    </Tooltip>
+                  )}
+                </div>
               </div>
             </List.Item>
           )}
         />
         <div ref={messagesEndRef} />
       </div>
-      <div style={{ 
-        borderTop: '1px solid #e8e8e8',
-        padding: '12px',
-        background: '#fff'
-      }}>
-        <div style={{ marginBottom: '8px' }}>
+      
+      <div className="input-container">
+        <div className="prompt-select">
           <Select
             placeholder="选择提示词"
             style={{ width: '100%' }}
@@ -563,6 +593,7 @@ ${pageContext.mainContent}
             ))}
           </Select>
         </div>
+        
         <div style={{ 
           display: 'flex',
           gap: '8px'
@@ -576,17 +607,22 @@ ${pageContext.mainContent}
             style={{ 
               resize: 'none',
               fontSize: '14px',
-              borderRadius: '4px'
+              borderRadius: '8px'
             }}
             disabled={isLoading}
           />
           <Button
             type="primary"
+            className="send-button"
             icon={isLoading ? <LoadingOutlined className="loading-icon" spin /> : <SendOutlined />}
             onClick={isLoading ? handleStop : handleSend}
             disabled={(!selectedPromptId && !inputValue.trim()) || (isLoading && !abortControllerRef.current)}
             loading={false}
             size="middle"
+            style={{
+              borderRadius: '8px',
+              height: 'auto'
+            }}
           />
         </div>
       </div>
